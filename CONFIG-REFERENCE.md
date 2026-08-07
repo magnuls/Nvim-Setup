@@ -128,6 +128,7 @@ what is actually bound, not what the docs claim.
 | `<leader>fa` | Find all files (hidden + ignored) |
 | `<leader>fw` | Live grep |
 | `<leader>fz` | Fuzzy find in current buffer |
+| `<leader>fd` | Diagnostics, project-wide and fuzzy-searchable — **added** |
 | `<leader>fb` | Buffers |
 | `<leader>fo` | Recent files |
 | `<leader>fh` | Help pages |

@@ -48,6 +48,7 @@ In-editor equivalent: `<leader>ch` (NvCheatsheet) or `<leader>wK` (which-key).
 | `<leader>fa` | Find all files — includes hidden and git-ignored |
 | `<leader>fw` | Live grep (ripgrep) |
 | `<leader>fz` | Fuzzy find inside the current buffer |
+| `<leader>fd` | Diagnostics across the whole project, fuzzy-searchable |
 | `<leader>fb` | Open buffers |
 | `<leader>fo` | Recent files |
 | `<leader>fh` | Help pages |
@@ -225,7 +226,8 @@ ruff, neocmake, lua_ls).
 | `<C-s>` (insert/visual) | Signature help — **off for clangd**, it fought the completion menu | [nvim] |
 | `<leader>D` | Type definition (NvChad's older alias for `grt`) | [NvChad] |
 | `<leader>ra` | Rename via NvRenamer's floating box | [NvChad] |
-| `<leader>ds` | Send diagnostics to the location list | [NvChad] |
+| `<leader>ds` | Send diagnostics to the location list (this file) | [NvChad] |
+| `<leader>fd` | Telescope diagnostics picker (whole project) | [custom] |
 | `<leader>wa` / `<leader>wr` / `<leader>wl` | Add / remove / list workspace folder | [NvChad] |
 | `<C-w>d` | Show the diagnostic under the cursor in a float | [nvim] |
 

@@ -54,8 +54,12 @@ vim.defer_fn(function()
       t.check("map " .. k .. " -> tmux", (rhs or ""):match "TmuxNavigate" ~= nil, tostring(rhs))
     end
 
-    -- lazygit
-    for lhs, want in pairs { ["<leader>gg"] = "LazyGit", ["<leader>gf"] = "LazyGitFilterCurrentFile" } do
+    -- lazygit + the diagnostics picker
+    for lhs, want in pairs {
+      ["<leader>gg"] = "LazyGit",
+      ["<leader>gf"] = "LazyGitFilterCurrentFile",
+      ["<leader>fd"] = "Telescope diagnostics",
+    } do
       local rhs = rhs_of(lhs)
       t.check("map " .. lhs, (rhs or ""):match(want) ~= nil, tostring(rhs))
     end

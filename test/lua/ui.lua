@@ -211,12 +211,63 @@ local function test_lazygit(done)
   }, done)
 end
 
+-- --------------------------------------------------- diagnostics picker ---
+-- A keymap can resolve and still blow up on invoke, so press the key and check
+-- a populated picker actually appears.
+local function test_diag_picker(done)
+  t.chain({
+    {
+      500,
+      function()
+        vim.cmd "silent! only"
+        vim.cmd("edit! " .. vim.fn.fnameescape(root .. "/scratch/broken.cpp"))
+      end,
+    },
+    {
+      9000,
+      function()
+        t.check("broken.cpp has diagnostics to list", #vim.diagnostic.get(0) > 0, "prerequisite")
+        vim.api.nvim_input " fd" -- <leader>fd
+      end,
+    },
+    {
+      4000,
+      function()
+        local prompt, results
+        for _, b in ipairs(vim.api.nvim_list_bufs()) do
+          local ft = vim.bo[b].filetype
+          if ft == "TelescopePrompt" then
+            prompt = b
+          elseif ft == "TelescopeResults" then
+            results = b
+          end
+        end
+        t.check("<leader>fd opens the telescope diagnostics picker", prompt ~= nil, "TelescopePrompt buffer")
+        if results then
+          local lines = vim.api.nvim_buf_get_lines(results, 0, -1, false)
+          local nonempty = 0
+          for _, l in ipairs(lines) do
+            if vim.trim(l) ~= "" then
+              nonempty = nonempty + 1
+            end
+          end
+          t.check("picker lists the diagnostics", nonempty > 0, nonempty .. " rows")
+        end
+        vim.api.nvim_input "<Esc>"
+      end,
+    },
+    { 1500, function() end },
+  }, done)
+end
+
 vim.defer_fn(function()
   t.check("real UI attached", #vim.api.nvim_list_uis() > 0, "prerequisite for this probe")
   test_cmp(function()
     test_tree(function()
-      test_lazygit(function()
-        t.finish()
+      test_diag_picker(function()
+        test_lazygit(function()
+          t.finish()
+        end)
       end)
     end)
   end)

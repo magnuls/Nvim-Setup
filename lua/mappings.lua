@@ -26,6 +26,12 @@ map("n", "\\", function()
   end
 end, { desc = "nvimtree reveal / close" })
 
+-- Diagnostics ---------------------------------------------------------------------
+-- Project-wide, fuzzy-searchable. NvChad binds <leader>ds (location list, this
+-- file only) but nothing for the telescope picker. <cmd>Telescope ...<CR> rather
+-- than require("telescope.builtin"), so telescope stays lazy-loaded on :Telescope.
+map("n", "<leader>fd", "<cmd>Telescope diagnostics<CR>", { desc = "telescope diagnostics" })
+
 -- Git ---------------------------------------------------------------------------
 -- gitsigns (hunks, blame) and Telescope (<leader>cm commits, <leader>gt status)
 -- are NvChad defaults. lazygit adds branches, log graph and rebasing.
