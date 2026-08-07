@@ -22,9 +22,11 @@ lua/
   autocmds.lua            per-filetype settings (C/C++ indent)
   mappings.lua            all keymaps -- runs last, so it wins
   plugins/
-    cpp.lua               C/C++ and CMake specs: LSP -> tools -> format -> debug
+    cpp.lua               C/C++ specs: LSP -> format -> debug
+    python.lua            Python debug adapter
     editor.lua            treesitter, file tree, completion, tmux
     git.lua               lazygit
+    tools.lua             every external tool (mason-tool-installer)
   configs/
     lspconfig.lua         clangd (add future servers here)
     conform.lua           formatters
@@ -63,6 +65,7 @@ at commit `6f9a367`, preserved in `~/.config/nvim.backup`).
 | `<F7>` | Toggle DAP UI (see last session's result) |
 | `<leader>b` | Toggle breakpoint |
 | `<leader>B` | Conditional breakpoint (prompts for the condition) |
+| `<leader>dpr` | Debug the Python test method under the cursor (python only) |
 
 **How a debug session runs.** Set a breakpoint, press `<F5>`, and codelldb asks
 for the path to the executable. The DAP UI opens automatically when the session
@@ -427,9 +430,55 @@ Note completion only works because NvChad's `*` capabilities advertise
 clangd uses" above. Getting `CMAKE_CXX_STANDARD` right fixes editor diagnostics
 and the build in one place.
 
+### Python
+Ported from [dreamsofcode-io/neovim-python](https://github.com/dreamsofcode-io/neovim-python)
+(NvChad v2.0, Apr 2024). Most of that repo was already present — its DAP stack
+came with the C++ port and conform replaces its null-ls — so the only new plugin
+is `nvim-dap-python`.
+
+| Tool | Role |
+|---|---|
+| `pyright` | types, completion, go-to-definition |
+| `ruff` | linting and import sorting |
+| `black` | formatting on save |
+| `debugpy` | debugging, via `nvim-dap-python` |
+
+The debug keys are the same as C++ (`<F5>`, `<leader>b`, …), plus
+`<leader>dpr` to debug the test method under the cursor.
+
+**`.venv` detection.** pyright is pointed at a project-local `.venv` so
+pip-installed imports resolve. Two non-obvious requirements, both found the hard
+way:
+- `venvPath` must be **absolute**. A relative `"."` — which the old kickstart
+  config used — silently fails over LSP even when `root_dir` is set. It is
+  computed at attach in `configs/lspconfig.lua`.
+- pyright resolves the venv once at startup, so setting `client.settings` is
+  not enough; it needs an explicit `workspace/didChangeConfiguration`. Without
+  that notification the absolute path is still ignored.
+
+Verified against a project whose only copy of a package lived in `.venv`:
+unresolved-import error before, zero diagnostics after.
+
+**Divergences from upstream:**
+- `ruff-lsp` → **`ruff`**. Mason no longer carries `ruff-lsp` (only `ruff`,
+  `sqruff`, `trufflehog`), so upstream's choice is uninstallable. `ruff` is the
+  Rust server that replaced it, same feature set.
+- **mypy dropped.** Upstream runs it through null-ls for type errors; pyright
+  already reports those, and adding mypy would mean a second diagnostics plugin
+  and two type checkers disagreeing. Confirmed pyright catches what mypy would:
+  passing `42` to a `str` parameter is flagged.
+- `:TSInstall python` from upstream's README is unnecessary — parsers install
+  automatically.
+
 ### Formatting
 `conform.nvim` with `clang_format` for `c`/`cpp`, `gersemi` for `cmake`,
-`stylua` for `lua`.
+`black` for `python`, `stylua` for `lua`.
+
+`timeout_ms` is **2000**, not conform's default 500. `black` and `gersemi` are
+Python programs whose first run in a session pays interpreter startup and
+bytecode compilation — measured ~210ms cold against ~70ms warm, but a cold miss
+means the save silently goes unformatted. It is a ceiling, not a delay; fast
+formatters are unaffected.
 `format_on_save` is on (500 ms timeout, LSP fallback), so writing a buffer
 reformats it. `<leader>fm` formats on demand.
 

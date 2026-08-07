@@ -36,6 +36,31 @@ vim.lsp.enable "clangd"
 -- which NvChad already sets in its "*" capabilities.
 vim.lsp.enable "neocmake"
 
--- Future servers (pyright, ruff, ...) go here: vim.lsp.config(name, {...})
--- then vim.lsp.enable(name), plus the binary in mason-tool-installer's
--- ensure_installed. See :h vim.lsp.config
+-- Python ---------------------------------------------------------------------
+-- pyright: types, completion, go-to-definition.
+--
+-- Finds a project-local .venv, so pip-installed imports don't all read as
+-- "could not be resolved". venvPath must be ABSOLUTE: a relative "." (as the
+-- old kickstart config used) silently fails to resolve over LSP, even when
+-- root_dir is set. Computed at attach because the project isn't known earlier.
+vim.lsp.config("pyright", {
+  on_init = function(client)
+    local root = client.root_dir or vim.uv.cwd()
+    if root and vim.uv.fs_stat(root .. "/.venv") then
+      client.settings = vim.tbl_deep_extend("force", client.settings or {}, {
+        python = { venvPath = root, venv = ".venv" },
+      })
+      -- pyright resolves the venv once at startup, so setting client.settings
+      -- alone is too late -- it has to be told the config changed.
+      client:notify("workspace/didChangeConfiguration", { settings = client.settings })
+    end
+  end,
+})
+vim.lsp.enable "pyright"
+
+-- ruff: linting (and import sorting). This is the Rust server built into the
+-- ruff binary -- upstream installs ruff-lsp, which mason no longer carries.
+vim.lsp.enable "ruff"
+
+-- Adding a server: vim.lsp.config(name, {...}) then vim.lsp.enable(name),
+-- plus the binary in plugins/tools.lua. See :h vim.lsp.config

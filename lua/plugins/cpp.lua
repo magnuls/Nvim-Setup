@@ -1,7 +1,9 @@
--- C/C++ toolchain, in pipeline order: LSP -> tools -> format -> debug.
+-- C/C++ toolchain, in pipeline order: LSP -> format -> debug.
 -- Ported from dreamsofcode-io/neovim-cpp, which targeted NvChad v2.0.
 --
--- Settings: configs/lspconfig.lua, configs/conform.lua, configs/dap.lua
+-- The nvim-lspconfig and conform specs below are shared with CMake and Python;
+-- their per-language settings live in configs/. Tool installation is in
+-- plugins/tools.lua.
 
 return {
   -- 1. LSP -----------------------------------------------------------------
@@ -12,27 +14,7 @@ return {
     end,
   },
 
-  -- 2. Tool installation ---------------------------------------------------
-  -- Upstream put ensure_installed on mason.nvim. That worked in NvChad v2.0
-  -- via :MasonInstallAll; mason v2 has no such option and v2.5 dropped the
-  -- command, so it installed nothing silently.
-  {
-    "WhoIsSethDaniel/mason-tool-installer.nvim",
-    event = "VeryLazy",
-    dependencies = { "mason-org/mason.nvim" },
-    opts = {
-      ensure_installed = {
-        "clangd", -- C/C++ LSP
-        "clang-format", -- C/C++ formatter
-        "codelldb", -- C/C++ debug adapter
-        "neocmakelsp", -- CMake LSP (completion + diagnostics)
-        "gersemi", -- CMake formatter
-        "stylua", -- Lua formatter
-      },
-    },
-  },
-
-  -- 3. Formatting ----------------------------------------------------------
+  -- 2. Formatting ----------------------------------------------------------
   -- Replaces upstream's null-ls (archived 2023). Style comes from
   -- ~/.clang-format; format-on-save is enabled in configs/conform.lua.
   {
@@ -41,7 +23,7 @@ return {
     opts = require "configs.conform",
   },
 
-  -- 4. Debugging -----------------------------------------------------------
+  -- 3. Debugging -----------------------------------------------------------
   -- Keymaps are in lua/mappings.lua, not here: NvChad v2.0's
   -- core.utils.load_mappings hook no longer exists.
   { "mfussenegger/nvim-dap" },

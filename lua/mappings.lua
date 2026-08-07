@@ -73,3 +73,9 @@ end, { desc = "Debug: Toggle Breakpoint" })
 map("n", "<leader>B", function()
   require("dap").set_breakpoint(vim.fn.input "Breakpoint condition: ")
 end, { desc = "Debug: Set Conditional Breakpoint" })
+
+-- Python-only: debug the test method under the cursor (from the upstream
+-- python repo). Everything above works for Python too.
+map("n", "<leader>dpr", function()
+  require("dap-python").test_method()
+end, { desc = "Debug: Python test method" })

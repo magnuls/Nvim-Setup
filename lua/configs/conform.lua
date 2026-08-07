@@ -12,11 +12,17 @@ return {
     c = { "clang_format" },
     cpp = { "clang_format" },
     cmake = { "gersemi" },
+    python = { "black" },
     lua = { "stylua" },
   },
 
   format_on_save = {
-    timeout_ms = 500,
+    -- 2000, not conform's default 500: black and gersemi are Python programs,
+    -- and their first run in a session pays interpreter startup plus bytecode
+    -- compilation. Measured ~210ms cold vs ~70ms warm, but a cold miss means
+    -- the save silently goes unformatted. Fast formatters are unaffected --
+    -- this is a ceiling, not a delay.
+    timeout_ms = 2000,
     lsp_fallback = true,
   },
 }
