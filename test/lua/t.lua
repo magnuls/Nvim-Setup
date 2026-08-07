@@ -25,6 +25,12 @@ function M.check(name, ok, detail)
   flush()
 end
 
+--- Diagnostic note. Not a check -- shown only to explain a nearby failure.
+function M.trace(msg)
+  M.results[#M.results + 1] = { status = "NOTE", name = msg }
+  flush()
+end
+
 function M.skip(name, why)
   M.results[#M.results + 1] = { status = "SKIP", name = name, detail = why }
   flush()
@@ -110,10 +116,16 @@ end
 
 --- NvChad lazy-loads nvim-lspconfig on "User FilePost", which only fires after
 --- UIEnter -- never in --headless. Force it.
+---
+--- Uses lazy's Lua API, not `:Lazy! load`: the command form is ambiguous once
+--- lazygit.nvim registers :LazyGit* stubs, and fails with
+---   E464: Ambiguous use of user-defined command
 function M.force_load(...)
   vim.g.ui_entered = true
-  for _, p in ipairs { ... } do
-    pcall(vim.cmd, "Lazy! load " .. p)
+  local plugins = { ... }
+  local ok, lazy = pcall(require, "lazy")
+  if ok then
+    pcall(lazy.load, { plugins = plugins })
   end
 end
 

@@ -123,10 +123,21 @@ end
 
 vim.defer_fn(function()
   t.check("real UI attached", #vim.api.nvim_list_uis() > 0)
-  vim.cmd "Lazy! load nvim-dap mason-nvim-dap.nvim nvim-dap-ui nvim-dap-python"
+  t.force_load("nvim-dap", "mason-nvim-dap.nvim", "nvim-dap-ui", "nvim-dap-python")
 
   vim.defer_fn(function()
     local dap = require "dap"
+
+    -- Surface what the adapter actually reports; a silent failure is the
+    -- symptom this probe most needs to explain rather than just fail on.
+    dap.listeners.after.event_output["smoke"] = function(_, body)
+      if body and body.output then
+        t.trace("adapter: " .. (body.output:gsub("%s+$", "")))
+      end
+    end
+    dap.listeners.after.event_terminated["smoke"] = function()
+      t.trace "adapter: terminated"
+    end
 
     session("C++", "src/main.cpp", "acc%.add", function()
       -- Bypass the interactive executable prompt so the run is deterministic;

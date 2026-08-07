@@ -129,7 +129,11 @@ what is actually bound, not what the docs claim.
 |---|---|
 | `<leader>gg` | **lazygit** — branches, log graph, staging, rebase, stash |
 | `<leader>gf` | lazygit filtered to the current file's history |
-| `]c` / `[c` | Next / previous hunk (gitsigns) |
+
+gitsigns draws the signs but has **no keymaps** — NvChad ships it without an
+`on_attach` and gitsigns binds nothing by default, so hunk staging, reset,
+preview, blame and navigation are all unbound. `]c` / `[c` are Vim's diff-mode
+motions and do not step gutter hunks. See CHEATSHEET.md → "Not bound".
 
 lazygit is the external binary (`brew install lazygit`), opened in a floating
 window by `kdheepak/lazygit.nvim`, lazy-loaded on command. gitsigns handles
@@ -162,7 +166,7 @@ here. `H` and `I` bring them back for the session.
 > vsplit and `S` to hsplit; those are restored here. The cost is nvim-tree's
 > `S` (search node) — use `g?` to find alternatives.
 >
-> The override lives in `lua/plugins/init.lua` and calls
+> The override lives in `lua/plugins/editor.lua` and calls
 > `api.map.on_attach.default(bufnr)` **first**, then rebinds. Reversing that
 > order silently reinstates `s` = Run System. All 60 default tree mappings are
 > preserved.
@@ -175,12 +179,8 @@ children. NvChad overrides only `unmerged`.
 They appeared en masse at first because `~/.config/nvim` was still a **clone of
 NvChad/starter**, so every customization read as a diff against upstream's
 commit. It has since been re-initialised as a standalone repo
-(`rm -rf .git && git init`, one commit, no remote), so the tree is clean.
-
-Add a remote when you want it backed up:
-```bash
-git remote add origin git@github.com:<you>/nvim-config.git && git push -u origin main
-```
+(`rm -rf .git && git init`), so the tree is clean. It now pushes to
+`github.com/magnuls/Nvim-Setup`.
 
 ### Buffers & windows
 | Key | Action |

@@ -134,6 +134,13 @@ cat > CMakeLists.txt <<'EOF'
 cmake_minimum_required(VERSION 3.20)
 project(testbed C CXX)
 
+# Debug by default. With an empty CMAKE_BUILD_TYPE cmake passes no -g at all,
+# the binary carries no DWARF, and source-line breakpoints silently never bind
+# -- the debugger launches the program and runs straight through.
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Debug)
+endif()
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 17)

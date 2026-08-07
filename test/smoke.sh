@@ -92,6 +92,7 @@ for f in "$RESULTS"/*.tsv; do
       PASS) pass=$((pass+1)); printf '  \033[32m✓\033[0m %s\n' "$name" ;;
       FAIL) fail=$((fail+1)); printf '  \033[31m✗ %s\033[0m\n      %s\n' "$name" "$detail" ;;
       SKIP) skip=$((skip+1)); printf '  \033[33m–\033[0m %s  (%s)\n' "$name" "$detail" ;;
+      NOTE) printf '    \033[90m· %s\033[0m\n' "$name" ;;
     esac
   done < "$f"
 done
