@@ -96,6 +96,45 @@ what is actually bound, not what the docs claim.
 | `\` | Reveal current file in the tree / close it if already inside — **added**, matches the old neo-tree binding |
 | `<C-n>` | Toggle nvim-tree |
 | `<leader>e` | Focus nvim-tree |
+| `s` | Open in **vertical split** — **overridden** (see below) |
+| `S` | Open in **horizontal split** — **overridden** |
+| `<C-v>` / `<C-x>` / `<C-t>` | Vertical split / horizontal split / new tab (nvim-tree defaults, still work) |
+| `<CR>` / `o` | Open in the current window |
+| `a` / `d` / `r` | Create / delete / rename |
+| `H` | Toggle hidden **dotfiles** (hidden by default) |
+| `I` | Toggle **git-ignored** files (hidden by default) |
+| `g?` | Full nvim-tree keymap help |
+
+Dotfiles and git-ignored files are hidden on open — NvChad ships
+`filters = { dotfiles = false }` (i.e. *shown*); both are flipped to `true`
+here. `H` and `I` bring them back for the session.
+
+> **Why `s` was remapped.** nvim-tree binds `s` to `api.node.run.system`
+> ("Run System"), which calls `vim.ui.open()` → macOS `open` → whatever
+> application claims that file type. On this machine that meant pressing `s`
+> launched **Shadowrocket**. neo-tree, used in the old config, binds `s` to
+> vsplit and `S` to hsplit; those are restored here. The cost is nvim-tree's
+> `S` (search node) — use `g?` to find alternatives.
+>
+> The override lives in `lua/plugins/init.lua` and calls
+> `api.map.on_attach.default(bufnr)` **first**, then rebinds. Reversing that
+> order silently reinstates `s` = Run System. All 60 default tree mappings are
+> preserved.
+
+### Git markers in the tree (`✗`, `★`)
+Not errors — nvim-tree's git status glyphs. `✗` unstaged, `★` untracked, `✓`
+staged, `➜` renamed, `◌` ignored. A folder inherits the mark of its dirty
+children. NvChad overrides only `unmerged`.
+
+They appeared en masse at first because `~/.config/nvim` was still a **clone of
+NvChad/starter**, so every customization read as a diff against upstream's
+commit. It has since been re-initialised as a standalone repo
+(`rm -rf .git && git init`, one commit, no remote), so the tree is clean.
+
+Add a remote when you want it backed up:
+```bash
+git remote add origin git@github.com:<you>/nvim-config.git && git push -u origin main
+```
 
 ### Buffers & windows
 | Key | Action |
@@ -279,6 +318,29 @@ remembering: `Add` is not a fallback mechanism.
 
 (`~/.config/clangd/config.yaml` also exists but is the *Linux* user-config path.
 clangd never reads it on macOS.)
+
+### Indentation — C/C++ is 4, everything else is 2
+NvChad sets `shiftwidth`/`tabstop`/`softtabstop` to **2** globally, but
+`~/.clang-format` uses `IndentWidth: 4`. Left alone, pressing `o` produced a
+2-space line that format-on-save immediately rewrote to 4 — the editor and the
+formatter disagreeing on every new line.
+
+A `FileType` autocmd in `lua/autocmds.lua` sets **4** for `c`, `cpp`, `objc`,
+`objcpp` and `cuda`, and turns `smartindent` off (`cindent`, already enabled by
+Neovim's own `indent/cpp.vim`, supersedes it).
+
+It is buffer-local and deliberately **not** global: `.stylua.toml` uses
+`indent_width = 2`, so a global 4 would recreate the same mismatch in Lua files.
+
+> **These two numbers must be changed together.** `IndentWidth` in
+> `~/.clang-format` and `shiftwidth` in the `CppIndent` autocmd. Change one
+> alone and the old symptom comes straight back.
+
+### Brace style
+`BreakBeforeBraces: Attach` — K&R, opening brace on the same line. What LLVM,
+Google, and most C++ codebases use. Allman is the only other style still in
+common circulation; GNU, Whitesmiths, Horstmann, Ratliff and Lisp style are
+effectively extinct in modern C++.
 
 ### Formatting
 `conform.nvim` with `clang_format` for `c` and `cpp`, `stylua` for `lua`.

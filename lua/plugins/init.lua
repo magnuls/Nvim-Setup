@@ -28,6 +28,14 @@ return {
   {
     "nvim-tree/nvim-tree.lua",
     opts = function(_, opts)
+      -- NvChad ships `filters = { dotfiles = false }`, i.e. show them. Hide the
+      -- clutter by default instead; both filters have built-in toggles.
+      -- Merged, not assigned, so anything else under `filters` survives.
+      opts.filters = vim.tbl_deep_extend("force", opts.filters or {}, {
+        dotfiles = true, -- .git, .stylua.toml, ...   toggle with H
+        git_ignored = true, -- build/, node_modules/, ... toggle with I
+      })
+
       opts.on_attach = function(bufnr)
         local api = require "nvim-tree.api"
         -- Defaults FIRST -- calling this after would reinstate s = Run System.
