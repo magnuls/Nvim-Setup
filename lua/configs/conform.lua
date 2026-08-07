@@ -1,7 +1,13 @@
--- Replaces dreamsofcode's configs/null-ls.lua. null-ls was archived in 2023;
--- conform (which NvChad already installs) does the same job in three lines.
--- Style comes from ~/.clang-format.
-local options = {
+-- Formatters. Spec: plugins/cpp.lua.
+-- Replaces upstream's null-ls (archived 2023); conform ships with NvChad.
+--
+-- C/C++ style comes from ~/.clang-format (LLVM base, IndentWidth 4).
+-- Lua style comes from .stylua.toml in this repo.
+--
+-- Editor indent must match the formatter or every new line gets rewritten on
+-- save -- see the CppIndent autocmd in lua/autocmds.lua.
+
+return {
   formatters_by_ft = {
     c = { "clang_format" },
     cpp = { "clang_format" },
@@ -13,5 +19,3 @@ local options = {
     lsp_fallback = true,
   },
 }
-
-return options

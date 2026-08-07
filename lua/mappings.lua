@@ -1,14 +1,22 @@
+-- Keymaps. Leader is <Space> (set in init.lua).
+--
+-- Anything here overrides NvChad, because this file runs last. Conversely, a
+-- plugin that maps keys at load time WILL be overwritten by nvchad.mappings
+-- below -- set those here instead (see the tmux block).
+--
+-- Full key list, including NvChad's own: CONFIG-REFERENCE.md, or <leader>ch.
+
 require "nvchad.mappings"
 
 local map = vim.keymap.set
 
+-- General ---------------------------------------------------------------------
 map("n", ";", ":", { desc = "CMD enter command mode" })
 map("i", "jk", "<ESC>")
 
--- File tree on <\>, as in the old kickstart/neo-tree config. NvChad only binds
--- <C-n> (toggle) and <leader>e (focus); <\> is unmapped by default.
--- Focuses the tree when outside it, closes it when already inside -- the
--- reveal/close behaviour neo-tree had.
+-- File tree -------------------------------------------------------------------
+-- <\> reveals the current file, or closes the tree from inside it, as neo-tree
+-- did. NvChad binds only <C-n> and <leader>e.
 map("n", "\\", function()
   local api = require "nvim-tree.api"
   if vim.bo.filetype == "NvimTree" then
@@ -18,22 +26,20 @@ map("n", "\\", function()
   end
 end, { desc = "nvimtree reveal / close" })
 
--- Cross nvim splits and tmux panes with one keystroke. These must be set here,
--- after `require "nvchad.mappings"` above, or NvChad's plain <C-w>h window
--- switching wins and movement stops at the tmux pane border.
+-- Windows and tmux panes -------------------------------------------------------
+-- Must be set here, after nvchad.mappings: otherwise NvChad's plain <C-w>h
+-- wins and movement stops dead at the tmux pane border.
 map("n", "<C-h>", "<cmd>TmuxNavigateLeft<CR>", { desc = "window/pane left" })
 map("n", "<C-j>", "<cmd>TmuxNavigateDown<CR>", { desc = "window/pane down" })
 map("n", "<C-k>", "<cmd>TmuxNavigateUp<CR>", { desc = "window/pane up" })
 map("n", "<C-l>", "<cmd>TmuxNavigateRight<CR>", { desc = "window/pane right" })
 
--- Debugger. These replace dreamsofcode's <leader>db / <leader>dr with the
--- bindings from the old kickstart config (lua/kickstart/plugins/debug.lua).
+-- Debugger ---------------------------------------------------------------------
+-- From the old kickstart config. dap/dapui are required inside each callback,
+-- not at the top: this file runs in a vim.schedule at startup, before the
+-- VeryLazy plugins exist.
 --
--- dap/dapui are required inside each callback, not at the top of the file:
--- mappings.lua runs in a vim.schedule at startup, before the VeryLazy plugins
--- have loaded.
---
--- NOTE: <leader>b overrides NvChad's "new buffer". Use :enew for that.
+-- <leader>b overrides NvChad's "new buffer" -- use :enew for that.
 map("n", "<F5>", function()
   require("dap").continue()
 end, { desc = "Debug: Start/Continue" })

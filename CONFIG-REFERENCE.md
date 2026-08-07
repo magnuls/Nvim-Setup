@@ -12,6 +12,36 @@ Generated 2026-08-06.
 > and its formatter (`null-ls`, archived 2023) no longer exist. What follows is the
 > ported equivalent, not a copy. Divergences are called out as they come up.
 
+## Layout
+
+```
+init.lua                  NvChad bootstrap (stock, don't edit)
+lua/
+  chadrc.lua              theme / UI
+  options.lua             global editor options
+  autocmds.lua            per-filetype settings (C/C++ indent)
+  mappings.lua            all keymaps -- runs last, so it wins
+  plugins/
+    cpp.lua               C/C++ specs: LSP -> tools -> format -> debug
+    editor.lua            treesitter, file tree, completion, tmux
+  configs/
+    lspconfig.lua         clangd (add future servers here)
+    conform.lua           formatters
+    dap.lua               debugger + codelldb run configs
+    lazy.lua              lazy.nvim settings (stock)
+```
+
+Specs say *which* plugin and when to load it; `configs/` says how it behaves.
+lazy.nvim imports every file in `plugins/`, so a new domain is a new file.
+
+Settings outside this repo that the config depends on:
+
+| Path | Controls |
+|---|---|
+| `~/.clang-format` | C/C++ format style (`IndentWidth: 4`) |
+| `~/Library/Preferences/clangd/config.yaml` | clangd flags, diagnostics |
+| `~/.config/tmux/tmux.conf` | tmux keys, theme, plugins |
+
 ---
 
 # Part 1 — Debugging
@@ -289,32 +319,56 @@ Two settings:
   the completion menu.
 - `init_options.fallbackFlags = { "-std=c++23" }` — see below.
 
-### Where C++23 is set — two separate places
-1. **clangd** — `fallbackFlags` in `lua/configs/lspconfig.lua`. Without it,
-   clangd assumes an older standard and marks valid C++23 as errors. This
-   applies *only* when the project has no `compile_commands.json`; a real
-   compile database always wins.
-2. **The compiler** — your own `g++ -std=c++23` invocation, or your
-   CMakeLists / Makefile.
+### Which C++ standard clangd uses
 
-Changing one does not change the other. If the editor and the build disagree
-about the standard, this is the first place to look.
+Precedence, highest first:
 
-### ⚠️ Third place: `~/Library/Preferences/clangd/config.yaml`
+1. **The project's `compile_commands.json`** — what CMake generates. A real
+   project always controls its own standard.
+2. **`-std=c++23`** from `init_options.fallbackFlags` in
+   `lua/configs/lspconfig.lua`, used only when a file has **no** compile
+   database (loose scratch files).
 
-A global clangd config from the previous setup lives there and **outranks both**
-of the above. It survived the nvim wipe because it sits outside
-`~/.config/nvim`.
+That is the whole chain. `~/Library/Preferences/clangd/config.yaml`
+deliberately does **not** set `-std` — see the warning below for why.
 
-Its `CompileFlags.Add` list is appended *after* the compile command, and for
-`-std` the last flag wins — so a `-std` there silently overrides
-`compile_commands.json`, `compile_flags.txt`, and clangd's `fallbackFlags`
-alike. It had `-std=c++20` pinned, which is why valid C++23 showed as errors
-even with `-std=c++23` set everywhere else. Now updated to `-std=c++23`.
+**For CMake projects, declare the standard and the editor follows automatically:**
 
-The file's original comment claimed it "applies to any project that does NOT
-have its own compile_commands.json." That was wrong, and it is worth
-remembering: `Add` is not a fallback mechanism.
+```cmake
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)   # writes build/compile_commands.json
+```
+
+clangd finds `compile_commands.json` in the project root or `build/` on its own
+— no nvim configuration needed. Verified end to end: with
+`CMAKE_CXX_STANDARD 17` clangd correctly flags `std::println` as missing; flip
+to `23` and it goes clean.
+
+So if clangd ever flags `std::println`, that now means **your build would reject
+it too**. Fix the CMakeLists, not the editor.
+
+### ⚠️ `CompileFlags.Add` is not a fallback mechanism
+
+In `~/Library/Preferences/clangd/config.yaml`, `CompileFlags.Add` appends
+*after* the compile command, and for `-std` the last flag wins. Anything put
+there silently overrides `compile_commands.json`, `compile_flags.txt` **and**
+`fallbackFlags`.
+
+This caused two separate bugs before it was removed:
+- A stale `-std=c++20` beat an explicit `-std=c++23` everywhere else, making
+  valid C++23 look broken.
+- `-std=c++23` was applied to C files too, and clang rejects it outright:
+  `invalid argument '-std=c++23' not allowed with 'C'` — every `.c` file
+  reported an error.
+
+Both are fixed by keeping `-std` out of that file entirely. A `PathMatch`
+fragment there still strips `-std=c++*` from `.c` files, because `fallbackFlags`
+is language-agnostic and would otherwise reintroduce the C error on scratch C
+files.
+
+`.h` is deliberately left unforced: clangd infers a header's flags from the
+source file that includes it, which is correct in a mixed C/C++ setup.
 
 (`~/.config/clangd/config.yaml` also exists but is the *Linux* user-config path.
 clangd never reads it on macOS.)

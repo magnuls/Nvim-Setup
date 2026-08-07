@@ -1,27 +1,16 @@
--- This file needs to have same structure as nvconfig.lua
--- https://github.com/NvChad/ui/blob/v3.0/lua/nvconfig.lua
--- Please read that file to know all available options :(
+-- NvChad UI. Full option list: https://github.com/NvChad/ui/blob/v3.0/lua/nvconfig.lua
+--
+-- Do NOT delete ~/.local/share/nvim/base46/ to force a theme rebuild -- init.lua
+-- dofile()s that cache before anything can regenerate it and startup aborts.
+-- Use <leader>th; recovery command is in CONFIG-REFERENCE.md.
 
 ---@type ChadrcConfig
 local M = {}
 
 M.base46 = {
-  -- tokyonight, not dreamsofcode's catppuccin: Alacritty imports
-  -- themes/tokyo_night.toml and tmux runs tokyo-night-tmux, so anything else
-  -- makes the nvim statusline clash with the tmux bar directly below it.
+  -- Matches Alacritty (themes/tokyo_night.toml) and tmux (tokyo-night-tmux),
+  -- so the statusline doesn't clash with the tmux bar right below it.
   theme = "tokyonight",
-
-  -- hl_override = {
-  -- 	Comment = { italic = true },
-  -- 	["@comment"] = { italic = true },
-  -- },
 }
-
--- M.nvdash = { load_on_startup = true }
--- M.ui = {
---       tabufline = {
---          lazyload = false
---      }
--- }
 
 return M
