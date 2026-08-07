@@ -44,14 +44,19 @@ vim.lsp.enable "neocmake"
 -- old kickstart config used) silently fails to resolve over LSP, even when
 -- root_dir is set. Computed at attach because the project isn't known earlier.
 vim.lsp.config("pyright", {
+  -- Must mutate client.settings: that is what answers pyright's
+  -- workspace/configuration pull. Setting config.settings in before_init does
+  -- NOT reach it -- the reply comes back carrying only python.analysis.
+  --
+  -- pythonPath (the interpreter), not venvPath: it is what editors are expected
+  -- to send, and it survives the pull reliably.
   on_init = function(client)
     local root = client.root_dir or vim.uv.cwd()
-    if root and vim.uv.fs_stat(root .. "/.venv") then
+    local py = root and (root .. "/.venv/bin/python")
+    if py and vim.uv.fs_stat(py) then
       client.settings = vim.tbl_deep_extend("force", client.settings or {}, {
-        python = { venvPath = root, venv = ".venv" },
+        python = { pythonPath = py, venvPath = root, venv = ".venv" },
       })
-      -- pyright resolves the venv once at startup, so setting client.settings
-      -- alone is too late -- it has to be told the config changed.
       client:notify("workspace/didChangeConfiguration", { settings = client.settings })
     end
   end,
