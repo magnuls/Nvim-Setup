@@ -1,0 +1,469 @@
+# Neovim C++ Setup — Reference
+
+Generated 2026-08-06.
+
+- **Base:** [NvChad](https://github.com/NvChad/starter) v2.5 starter, plugins via **lazy.nvim**
+- **C++ layer:** ported from [dreamsofcode-io/neovim-cpp](https://github.com/dreamsofcode-io/neovim-cpp)
+- **Leader:** `<Space>` (set in `init.lua`)
+- **Tmux:** `~/.config/tmux/tmux.conf`, plugins via **TPM**
+
+> The upstream C++ repo targets NvChad **v2.0** (Feb 2024). Its file layout
+> (`lua/custom/`), its APIs (`core.utils.load_mappings`, `plugins.configs.lspconfig`),
+> and its formatter (`null-ls`, archived 2023) no longer exist. What follows is the
+> ported equivalent, not a copy. Divergences are called out as they come up.
+
+---
+
+# Part 1 — Debugging
+
+The seven keys below replace the upstream repo's `<leader>db` / `<leader>dr`.
+They come from the previous kickstart config (`lua/kickstart/plugins/debug.lua`
+at commit `6f9a367`, preserved in `~/.config/nvim.backup`).
+
+> ⚠️ **`<leader>b` overrides NvChad's "new buffer".** Use `:enew` for a new buffer.
+> Every other key here is unclaimed by NvChad.
+
+| Key | Action |
+|---|---|
+| `<F5>` | Start / continue |
+| `<F1>` | Step into |
+| `<F2>` | Step over |
+| `<F3>` | Step out |
+| `<F7>` | Toggle DAP UI (see last session's result) |
+| `<leader>b` | Toggle breakpoint |
+| `<leader>B` | Conditional breakpoint (prompts for the condition) |
+
+**How a debug session runs.** Set a breakpoint, press `<F5>`, and codelldb asks
+for the path to the executable. The DAP UI opens automatically when the session
+initializes and closes when it terminates or exits — three `dap.listeners`
+registered in `lua/plugins/init.lua`.
+
+**The run-configuration behaviour.** Stock mason-nvim-dap prompts for the
+executable path on *every* launch, starting from an empty box. A custom
+`codelldb` handler replaces those configurations with ones that close over a
+`last_program` local, so the second `<F5>` pre-fills the last path and `F5`+Enter
+re-runs — the way an IDE run config behaves. There are two configurations:
+`LLDB: Launch` and `LLDB: Launch (with args)`, the second prompting for
+space-separated arguments. The sibling default handler leaves every other
+adapter at stock behaviour.
+
+Compile with `-g` or breakpoints won't bind:
+```bash
+g++ -std=c++23 -g -o main main.cpp
+```
+
+### ⚠️ macOS: developer mode must be enabled
+
+`DevToolsSecurity -status` currently reports **disabled** on this machine. While
+it is off, macOS gates `debugserver`'s ability to take control of another
+process behind a per-session authorization prompt. The symptom is distinctive:
+the DAP session initializes, the breakpoint verifies, codelldb logs
+`Launching: …` — and then nothing at all. No error, no stop, no output. Plain
+`/usr/bin/lldb` hangs the same way on the same binary, which is how you can tell
+it is the OS and not the config.
+
+Fix once, with your admin password:
+
+```bash
+sudo DevToolsSecurity -enable
+```
+
+---
+
+# Part 2 — Keybindings
+
+Everything below is a NvChad default, read from
+`~/.local/share/nvim/lazy/NvChad/lua/nvchad/mappings.lua` — so this documents
+what is actually bound, not what the docs claim.
+
+### Files & search (Telescope)
+| Key | Action |
+|---|---|
+| `<leader>ff` | Find files |
+| `<leader>fa` | Find all files (hidden + ignored) |
+| `<leader>fw` | Live grep |
+| `<leader>fz` | Fuzzy find in current buffer |
+| `<leader>fb` | Buffers |
+| `<leader>fo` | Recent files |
+| `<leader>fh` | Help pages |
+| `<leader>ma` | Marks |
+| `<leader>cm` | Git commits |
+| `<leader>gt` | Git status |
+
+### File tree
+| Key | Action |
+|---|---|
+| `\` | Reveal current file in the tree / close it if already inside — **added**, matches the old neo-tree binding |
+| `<C-n>` | Toggle nvim-tree |
+| `<leader>e` | Focus nvim-tree |
+
+### Buffers & windows
+| Key | Action |
+|---|---|
+| `<Tab>` / `<S-Tab>` | Next / previous buffer |
+| `<leader>x` | Close buffer |
+| `<C-h/j/k/l>` | Move between splits — **and tmux panes**, see Part 5 |
+| `<C-s>` | Save |
+| `<C-c>` | Yank whole file |
+
+### LSP
+| Key | Action | Source |
+|---|---|---|
+| `gd` | Go to definition | NvChad |
+| `gD` | Go to declaration | NvChad |
+| `<leader>D` | Go to type definition | NvChad |
+| `<leader>ra` | Rename (NvRenamer) | NvChad |
+| `<leader>ds` | Diagnostics → loclist | NvChad |
+| `<leader>wa` / `<leader>wr` / `<leader>wl` | Add / remove / list workspace folder | NvChad |
+| `K` | Hover docs | Neovim built-in |
+| `grr` | References | Neovim built-in |
+| `gra` | Code action | Neovim built-in |
+| `gri` | Implementation | Neovim built-in |
+| `grn` | Rename | Neovim built-in |
+
+### Terminals
+| Key | Action |
+|---|---|
+| `<leader>h` | New horizontal terminal |
+| `<leader>v` | New vertical terminal |
+| `<A-i>` | Toggle floating terminal |
+| `<A-h>` / `<A-v>` | Toggle horizontal / vertical terminal |
+| `<C-x>` | Escape terminal mode |
+| `<leader>pt` | Pick a hidden terminal |
+
+### Completion (nvim-cmp, insert mode)
+| Key | Action |
+|---|---|
+| `<C-y>` | **Accept** the highlighted item — **added**, matches the old blink.cmp `default` preset |
+| `<CR>` | Accept (NvChad's default; both work) |
+| `<C-n>` / `<C-p>` | Next / previous item |
+| `<Tab>` / `<S-Tab>` | Next / previous item, or jump snippet placeholders |
+| `<C-Space>` | Open the menu |
+| `<C-e>` | Close the menu |
+| `<C-d>` / `<C-f>` | Scroll docs down / up |
+
+NvChad binds no `<C-y>` of its own, so before this it fell through to Vim's
+built-in insert-mode `<C-y>` ("copy the character above the cursor") — typing
+`std::vec` and pressing it produced `std::veci`, which is what made it look
+broken.
+
+### Auto-`#include` on accept
+Accepting a completion also adds the header the symbol needs. Type `std::vec`
+in a file with no `<vector>` include, press `<C-y>`, and `#include <vector>`
+appears at the top.
+
+Nothing was configured to enable this — every piece already shipped:
+- clangd's `--header-insertion` defaults to `iwyu`.
+- NvChad's capabilities already declare
+  `completionItem.resolveSupport.properties` including `additionalTextEdits`.
+- clangd attaches the edit **directly to the completion item** (it reports
+  `resolveProvider: false`, so there is no `completionItem/resolve` round-trip).
+- nvim-cmp applies those edits on confirm — `lua/cmp/core.lua:440`.
+
+The chain only ever runs on *confirm*, which is why an unbound `<C-y>` made the
+feature look absent.
+
+**The `•` prefix** on an item (`•vector`) is clangd's header-insertion
+decorator: it marks completions that will add an `#include`. Items already in
+scope have no dot. Disable with `--header-insertion-decorators=false` if you
+find it noisy.
+
+### Unused-include warnings — turned off
+`Included header X is not used directly (fix available)` comes from
+**include-cleaner**, which clangd enables **by default from v17 onward**. It is
+not something this config switched on, and it is not a `-Wall`/`-Wextra`
+warning.
+
+It shows up here and not in the 2024 dreamsofcode video purely because Mason
+installs the current clangd (**22.1.6**) while the video ran clangd ~17. Note
+the video's own `main.cpp` carries the same stray `#include <iterator>` — both
+setups auto-insert it identically; only the newer clangd reports it.
+
+Disabled in `~/Library/Preferences/clangd/config.yaml`:
+
+```yaml
+Diagnostics:
+  UnusedIncludes: None
+```
+
+`MissingIncludes` is left at its default — a different check, and unrelated to
+header-insertion-on-completion, which still works.
+
+Set `UnusedIncludes: Strict` to turn it back on; on real projects dead includes
+are worth knowing about. clangd must be restarted to pick up a change
+(`:LspRestart`).
+
+The warning was always accurate, incidentally — `gra` (code action) deletes the
+dead include in one keystroke if you would rather fix than silence.
+
+### Misc
+| Key | Action |
+|---|---|
+| `;` | Enter command mode (`:`) |
+| `jk` (insert) | Escape |
+| `<Esc>` | Clear search highlight |
+| `<leader>/` | Toggle comment (normal + visual) |
+| `<leader>fm` | Format buffer manually |
+| `<leader>ch` | **NvCheatsheet** — every binding, live |
+| `<leader>th` | Theme picker |
+| `<leader>n` / `<leader>rn` | Toggle line / relative numbers |
+| `<leader>wK` | Which-key: all keymaps |
+
+`<leader>ch` is the in-editor version of this document and stays current
+automatically — anything mapped with a `desc` shows up there, including the
+seven debug keys above.
+
+---
+
+# Part 3 — Features
+
+### Theme
+`tokyonight` via `lua/chadrc.lua` (`M.base46.theme`) — **not** dreamsofcode's
+catppuccin. Alacritty imports `themes/tokyo_night.toml` and tmux runs
+`tokyo-night-tmux`, so any other nvim theme leaves the statusline visibly
+clashing with the tmux bar directly beneath it. Verified: nvim's `Normal`
+background is `#1a1b26`, the same value Alacritty uses.
+
+Swap interactively with `<leader>th`.
+
+> ⚠️ **Do not delete `~/.local/share/nvim/base46/` to force a theme rebuild.**
+> `init.lua` line 29 runs `dofile(base46_cache .. "defaults")` before anything
+> can regenerate it, so a missing cache aborts startup with a traceback and
+> leaves you with no options, autocmds, or mappings. Use `<leader>th`, which
+> handles the cache. If you have already deleted it, rebuild out-of-band:
+>
+> ```bash
+> nvim --headless -u NONE -c "lua
+> vim.g.base46_cache = vim.fn.stdpath('data') .. '/base46/'
+> local d = vim.fn.stdpath('data') .. '/lazy/'
+> for n in vim.fs.dir(d) do vim.opt.rtp:prepend(d .. n) end
+> require('base46').load_all_highlights()" -c 'qa!'
+> ```
+
+### LSP — clangd
+Configured in `lua/configs/lspconfig.lua` with `vim.lsp.config()` +
+`vim.lsp.enable()`, the Neovim 0.11 mechanism NvChad v2.5 uses. The upstream
+repo's `lspconfig.clangd.setup{}` is the older API.
+
+Two settings:
+- `signatureHelpProvider = false` — from upstream; the signature popup fights
+  the completion menu.
+- `init_options.fallbackFlags = { "-std=c++23" }` — see below.
+
+### Where C++23 is set — two separate places
+1. **clangd** — `fallbackFlags` in `lua/configs/lspconfig.lua`. Without it,
+   clangd assumes an older standard and marks valid C++23 as errors. This
+   applies *only* when the project has no `compile_commands.json`; a real
+   compile database always wins.
+2. **The compiler** — your own `g++ -std=c++23` invocation, or your
+   CMakeLists / Makefile.
+
+Changing one does not change the other. If the editor and the build disagree
+about the standard, this is the first place to look.
+
+### ⚠️ Third place: `~/Library/Preferences/clangd/config.yaml`
+
+A global clangd config from the previous setup lives there and **outranks both**
+of the above. It survived the nvim wipe because it sits outside
+`~/.config/nvim`.
+
+Its `CompileFlags.Add` list is appended *after* the compile command, and for
+`-std` the last flag wins — so a `-std` there silently overrides
+`compile_commands.json`, `compile_flags.txt`, and clangd's `fallbackFlags`
+alike. It had `-std=c++20` pinned, which is why valid C++23 showed as errors
+even with `-std=c++23` set everywhere else. Now updated to `-std=c++23`.
+
+The file's original comment claimed it "applies to any project that does NOT
+have its own compile_commands.json." That was wrong, and it is worth
+remembering: `Add` is not a fallback mechanism.
+
+(`~/.config/clangd/config.yaml` also exists but is the *Linux* user-config path.
+clangd never reads it on macOS.)
+
+### Formatting
+`conform.nvim` with `clang_format` for `c` and `cpp`, `stylua` for `lua`.
+`format_on_save` is on (500 ms timeout, LSP fallback), so writing a buffer
+reformats it. `<leader>fm` formats on demand.
+
+This replaces upstream's `configs/null-ls.lua`, which built the same behaviour
+by hand out of a `BufWritePre` autocmd and an augroup. `jose-elias-alvarez/null-ls`
+was archived in Aug 2023; conform ships with NvChad already, so the port drops a
+dependency rather than adding one.
+
+**Style** comes from `~/.clang-format`: LLVM base, 4-space indent, no tabs,
+100-column limit, `Standard: Latest`. It lives at `$HOME` because clang-format
+walks up parent directories — so it is the default for everything under `~`,
+while any project with its own `.clang-format` overrides it.
+
+(`Standard: Latest`, not `c++23` — clang-format's enum stops at `c++20` and
+rejects `c++23` as unknown.)
+
+### Tool installation
+`mason-tool-installer` installs `clangd`, `clang-format`, and `codelldb` on
+startup.
+
+Upstream put `ensure_installed` on `mason.nvim` itself. That worked under NvChad
+v2.0, whose `:MasonInstallAll` command read the field — but **mason.nvim v2 has
+no `ensure_installed` setting** and NvChad v2.5 dropped the command, so that
+block installs nothing and fails silently. mason-tool-installer is what actually
+works, and is what the old kickstart config used.
+
+Mason's binaries live in its own directory, not on your shell `PATH` — `clang-format`
+being absent from `which clang-format` is expected and does not affect conform.
+
+### Treesitter
+Installs `c`, `cpp`, `lua`, `luadoc`, `printf`, `vim`, `vimdoc` into
+`~/.local/share/nvim/site/parser/`. Building them needs `tree-sitter-cli`
+(present, via Homebrew).
+
+**Why the spec looks unusual.** nvim-treesitter's default branch is now `main`,
+a rewrite whose `setup()` accepts *only* `install_dir` — **`ensure_installed` is
+silently ignored**, including NvChad's own. The stock config therefore installs
+zero parsers and nothing warns you. Neovim 0.12 bundles `c`, `lua`, `markdown`,
+`query`, `vim` and `vimdoc`, but **not `cpp`**, so C++ ends up with no
+treesitter highlighting whatsoever.
+
+The config works around this by calling `require("nvim-treesitter").install()`
+directly for anything missing, and starting highlighting per-buffer from a
+`FileType` autocmd via `vim.treesitter.start()` — the two things the `main` API
+requires you to do yourself.
+
+### ⚠️ Keymap ordering: NvChad wins by default
+`init.lua` runs `require "mappings"` inside a `vim.schedule`, which fires *after*
+eagerly-loaded plugins have set their own keymaps. So a plugin that maps
+`<C-h>` at load time gets silently overwritten by `nvchad.mappings`.
+
+This bit vim-tmux-navigator: installed, loaded, and completely inert, with
+`<C-h>` still doing a plain `<C-w>h` that stops at the tmux pane border. The fix
+is `vim.g.tmux_navigator_no_mappings = 1` plus explicit maps in
+`lua/mappings.lua`, which run last and therefore win.
+
+Anything you want to beat a NvChad default belongs in `lua/mappings.lua`, after
+the `require "nvchad.mappings"` line.
+
+---
+
+# Part 3b — External requirements
+
+### ✅ ripgrep — installed
+Required by Telescope's `live_grep` (`<leader>fw`), which refuses to run without
+it. Now at `/opt/homebrew/bin/rg`; live grep verified working.
+
+### ✅ Developer mode — enabled
+Required for `debugserver` to attach. See Part 1.
+
+### Optional: `fd`
+Not installed. Telescope's file pickers are faster with it (`brew install fd`).
+
+### Optional: tmux focus-events
+`:checkhealth` notes `focus-events` is not enabled, which can stop `'autoread'`
+from noticing files changed outside nvim. Add to `~/.config/tmux/tmux.conf`:
+
+```tmux
+set -g focus-events on
+```
+
+---
+
+# Part 4 — The richer clangd flags (not enabled)
+
+The previous config ran clangd with considerably more. None of it is active —
+this section records what each flag bought, so enabling it later is an informed
+choice rather than cargo cult.
+
+| Flag | What it does |
+|---|---|
+| `--clang-tidy` | Runs clang-tidy checks as you type. Surfaces bug-prone patterns plain clangd never reports: use-after-move, missing `override`, implicit narrowing, ignored `[[nodiscard]]`. The single biggest quality upgrade of the set. |
+| `--background-index` | Indexes the whole project on a background thread. Without it, "find references" and rename only see files you currently have open — silently incomplete results on a large codebase. |
+| `--header-insertion=iwyu` | Completing a symbol auto-adds its `#include`. |
+| `--completion-style=detailed` | Full signatures in the completion menu instead of bare names. Matters for overload sets. |
+
+Plus a `before_init` hook injecting absolute include paths:
+
+```lua
+before_init = function(params, config)
+  local fallback_flags = { "-std=c++23", "-Wall", "-Wextra" }
+  if config.root_dir then
+    table.insert(fallback_flags, "-I" .. config.root_dir .. "/include")
+    table.insert(fallback_flags, "-I" .. config.root_dir .. "/src")
+  end
+  params.initializationOptions = vim.tbl_deep_extend("force",
+    params.initializationOptions or {}, { fallbackFlags = fallback_flags })
+end
+```
+
+**The problem this solved:** in a project with no `compile_commands.json`,
+clangd resolves relative include paths against *each source file's own
+directory*. So `#include "foo/bar.hpp"` resolves from `src/a/b/` and fails for
+anything nested. Absolute `-I` paths computed from the project root fix it.
+Irrelevant once you have a CMake-generated compile database.
+
+> Note: `before_init`, not `on_new_config`. The latter was a legacy
+> nvim-lspconfig hook and is **never called** by the native `vim.lsp.config()`
+> path — a silent no-op.
+
+To enable, add the `cmd` and `before_init` fields to the `vim.lsp.config("clangd", …)`
+table in `lua/configs/lspconfig.lua`:
+
+```lua
+cmd = {
+  "clangd",
+  "--clang-tidy",
+  "--background-index",
+  "--header-insertion=iwyu",
+  "--completion-style=detailed",
+},
+```
+
+---
+
+# Part 5 — Tmux (`~/.config/tmux/tmux.conf`)
+
+Prefix is the default `Ctrl-b`.
+
+| Key | Action |
+|---|---|
+| `prefix \|` | Split vertically (side by side) |
+| `prefix -` | Split horizontally (stacked) |
+| `prefix r` | Reload the config |
+| `prefix h/j/k/l` | Resize pane by 5, repeatable |
+| `prefix m` | Toggle pane zoom, repeatable |
+| `Ctrl-h/j/k/l` | Navigate panes **and nvim splits** — no prefix |
+| `v` / `C-v` / `y` (copy mode) | Begin selection / rectangle toggle / copy and cancel |
+
+Windows and panes are 1-indexed with `renumber-windows on`. Mouse is enabled.
+`default-terminal` is `tmux-256color` with `Tc` overrides, without which nvim
+colorschemes render washed out.
+
+**Plugins (TPM):** vim-tmux-navigator, tmux-resurrect (with pane-contents
+capture), tmux-continuum (auto-save every 15 min, auto-restore on), and
+tokyo-night-tmux for the status bar.
+
+### The vim-tmux-navigator pairing
+This plugin has to be installed on **both** sides to work. Tmux already had it;
+the Neovim half was added to `lua/plugins/init.lua` as part of this setup. With
+only one side, `Ctrl-h/j/k/l` moves between nvim splits but stops dead at the
+tmux pane border. With both, one keystroke crosses the boundary in either
+direction.
+
+Note this claims `Ctrl-h/j/k/l`, which is why tmux pane *resizing* is on
+`prefix h/j/k/l` instead.
+
+---
+
+# Divergences from dreamsofcode-io/neovim-cpp
+
+| Upstream | Here | Why |
+|---|---|---|
+| `lua/custom/**` layout | v2.5 layout (`lua/plugins/`, `lua/configs/`) | v2.0 directory no longer read |
+| `M.plugins = "custom.plugins"`, `M.mappings = …` | removed | Dead keys in v2.5 chadrc |
+| `require("core.utils").load_mappings("dap")` | keys in `lua/mappings.lua` | API removed |
+| `lspconfig.clangd.setup{}` | `vim.lsp.config` + `vim.lsp.enable` | Pre-0.11 API |
+| `null-ls` + manual `BufWritePre` autocmd | `conform.nvim` `format_on_save` | null-ls archived 2023 |
+| `ensure_installed` on `mason.nvim` | `mason-tool-installer` | Silently installs nothing in v2 |
+| `<leader>db` / `<leader>dr` | `<leader>b` / `<F5>` + 5 more | Old kickstart bindings |
+| dap-ui without `nvim-nio` | `nvim-nio` added | Became a hard dependency |
+| — | `-std=c++23` fallbackFlags | Requested |
+| — | `~/.clang-format` | Requested |
+| — | `vim-tmux-navigator` | Tmux half already installed |
+| — | treesitter `c` / `cpp` | Starter ships it commented out |
