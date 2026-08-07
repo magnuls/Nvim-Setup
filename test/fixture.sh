@@ -280,5 +280,8 @@ git checkout -q -b feature
 echo "// dirty" >> src/main.cpp
 
 # ------------------------------------------------------------------- build ---
+# Configure AND build: compile_commands.json comes from the configure step, but
+# the debug probe needs an actual executable with DWARF to launch.
 cmake -S . -B build >/dev/null 2>&1
+cmake --build build >/dev/null 2>&1
 echo "$DIR"

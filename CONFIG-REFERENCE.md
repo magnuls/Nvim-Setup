@@ -37,6 +37,11 @@ lua/
 Specs say *which* plugin and when to load it; `configs/` says how it behaves.
 lazy.nvim imports every file in `plugins/`, so a new domain is a new file.
 
+`test/` holds a smoke suite: `./test/smoke.sh` builds a polyglot fixture
+(C++/C sharing `include/*.h`, CMake, a Python package with a `.venv`, git
+history) and drives 107 behavioural checks against it, exiting non-zero on any
+failure. Run it after changing anything.
+
 Settings outside this repo that the config depends on:
 
 | Path | Controls |
@@ -81,26 +86,32 @@ re-runs — the way an IDE run config behaves. There are two configurations:
 space-separated arguments. The sibling default handler leaves every other
 adapter at stock behaviour.
 
-Compile with `-g` or breakpoints won't bind:
+**Verified working end to end** — the smoke suite drives a real session for both
+languages: `<leader>b`, `<F5>`, stops at the breakpoint, `<F2>` steps, clean
+terminate. Run `./test/smoke.sh debug` to re-check.
+
+### ⚠️ Build with debug info, or breakpoints silently never bind
+
 ```bash
 g++ -std=c++23 -g -o main main.cpp
 ```
 
-### ⚠️ macOS: developer mode must be enabled
-
-`DevToolsSecurity -status` currently reports **disabled** on this machine. While
-it is off, macOS gates `debugserver`'s ability to take control of another
-process behind a per-session authorization prompt. The symptom is distinctive:
-the DAP session initializes, the breakpoint verifies, codelldb logs
-`Launching: …` — and then nothing at all. No error, no stop, no output. Plain
-`/usr/bin/lldb` hangs the same way on the same binary, which is how you can tell
-it is the OS and not the config.
-
-Fix once, with your admin password:
+With CMake, **an unset `CMAKE_BUILD_TYPE` passes no `-g` at all**:
 
 ```bash
-sudo DevToolsSecurity -enable
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 ```
+
+The failure mode gives you nothing to go on: codelldb launches the program, it
+runs to completion, and the breakpoint is simply ignored. No error, no warning.
+Check with `dwarfdump --debug-info <binary> | head` — empty output means no
+debug info. This cost real time to diagnose while writing the test suite.
+
+### macOS: developer mode
+
+`sudo DevToolsSecurity -enable` (already enabled here). Without it macOS blocks
+`debugserver` from taking control of a process, and the symptom looks identical
+to the missing-`-g` case above — session initializes, then nothing.
 
 ---
 
