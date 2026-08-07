@@ -26,6 +26,12 @@ map("n", "\\", function()
   end
 end, { desc = "nvimtree reveal / close" })
 
+-- Git ---------------------------------------------------------------------------
+-- gitsigns (hunks, blame) and Telescope (<leader>cm commits, <leader>gt status)
+-- are NvChad defaults. lazygit adds branches, log graph and rebasing.
+map("n", "<leader>gg", "<cmd>LazyGit<CR>", { desc = "LazyGit" })
+map("n", "<leader>gf", "<cmd>LazyGitFilterCurrentFile<CR>", { desc = "LazyGit: current file history" })
+
 -- Windows and tmux panes -------------------------------------------------------
 -- Must be set here, after nvchad.mappings: otherwise NvChad's plain <C-w>h
 -- wins and movement stops dead at the tmux pane border.

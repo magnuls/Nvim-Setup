@@ -17,7 +17,7 @@ return {
       local ts = require "nvim-treesitter"
       ts.setup {}
 
-      local want = { "c", "cpp", "lua", "luadoc", "printf", "vim", "vimdoc" }
+      local want = { "c", "cpp", "cmake", "lua", "luadoc", "printf", "vim", "vimdoc" }
       local installed = ts.get_installed "parsers"
       local missing = vim.tbl_filter(function(p)
         return not vim.tbl_contains(installed, p)

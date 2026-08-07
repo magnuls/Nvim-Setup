@@ -22,8 +22,9 @@ lua/
   autocmds.lua            per-filetype settings (C/C++ indent)
   mappings.lua            all keymaps -- runs last, so it wins
   plugins/
-    cpp.lua               C/C++ specs: LSP -> tools -> format -> debug
+    cpp.lua               C/C++ and CMake specs: LSP -> tools -> format -> debug
     editor.lua            treesitter, file tree, completion, tmux
+    git.lua               lazygit
   configs/
     lspconfig.lua         clangd (add future servers here)
     conform.lua           formatters
@@ -119,6 +120,18 @@ what is actually bound, not what the docs claim.
 | `<leader>ma` | Marks |
 | `<leader>cm` | Git commits |
 | `<leader>gt` | Git status |
+
+### Git
+| Key | Action |
+|---|---|
+| `<leader>gg` | **lazygit** — branches, log graph, staging, rebase, stash |
+| `<leader>gf` | lazygit filtered to the current file's history |
+| `]c` / `[c` | Next / previous hunk (gitsigns) |
+
+lazygit is the external binary (`brew install lazygit`), opened in a floating
+window by `kdheepak/lazygit.nvim`, lazy-loaded on command. gitsigns handles
+hunk signs, staging and inline blame; Telescope handles commit/status pickers.
+lazygit covers what neither does: branch management and a readable log graph.
 
 ### File tree
 | Key | Action |
@@ -396,8 +409,27 @@ Google, and most C++ codebases use. Allman is the only other style still in
 common circulation; GNU, Whitesmiths, Horstmann, Ratliff and Lisp style are
 effectively extinct in modern C++.
 
+### CMake
+`neocmakelsp` (Mason) provides completion, hover, go-to-definition and
+diagnostics for `CMakeLists.txt` and `*.cmake`. nvim-lspconfig ships the config,
+so `lua/configs/lspconfig.lua` only calls `vim.lsp.enable "neocmake"`.
+
+The diagnostics *are* the linting — grammar and semantic errors are reported
+directly by the server, so there is no separate linter process.
+
+`gersemi` formats on save via conform. Highlighting comes from the `cmake`
+treesitter parser.
+
+Note completion only works because NvChad's `*` capabilities advertise
+`snippetSupport`; neocmakelsp returns nothing without it.
+
+**CMakeLists is what feeds clangd its C++ standard** — see "Which C++ standard
+clangd uses" above. Getting `CMAKE_CXX_STANDARD` right fixes editor diagnostics
+and the build in one place.
+
 ### Formatting
-`conform.nvim` with `clang_format` for `c` and `cpp`, `stylua` for `lua`.
+`conform.nvim` with `clang_format` for `c`/`cpp`, `gersemi` for `cmake`,
+`stylua` for `lua`.
 `format_on_save` is on (500 ms timeout, LSP fallback), so writing a buffer
 reformats it. `<leader>fm` formats on demand.
 

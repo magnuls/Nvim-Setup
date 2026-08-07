@@ -29,6 +29,13 @@ vim.lsp.config("clangd", {
 
 vim.lsp.enable "clangd"
 
+-- neocmakelsp ----------------------------------------------------------------
+-- Completion, hover, go-to-definition and diagnostics for CMakeLists.txt.
+-- nvim-lspconfig ships the config, so enabling is all that's needed.
+-- It only returns completions when the client advertises snippetSupport,
+-- which NvChad already sets in its "*" capabilities.
+vim.lsp.enable "neocmake"
+
 -- Future servers (pyright, ruff, ...) go here: vim.lsp.config(name, {...})
 -- then vim.lsp.enable(name), plus the binary in mason-tool-installer's
 -- ensure_installed. See :h vim.lsp.config

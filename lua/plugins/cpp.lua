@@ -21,7 +21,14 @@ return {
     event = "VeryLazy",
     dependencies = { "mason-org/mason.nvim" },
     opts = {
-      ensure_installed = { "clangd", "clang-format", "codelldb", "stylua" },
+      ensure_installed = {
+        "clangd", -- C/C++ LSP
+        "clang-format", -- C/C++ formatter
+        "codelldb", -- C/C++ debug adapter
+        "neocmakelsp", -- CMake LSP (completion + diagnostics)
+        "gersemi", -- CMake formatter
+        "stylua", -- Lua formatter
+      },
     },
   },
 
