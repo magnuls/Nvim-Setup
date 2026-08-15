@@ -85,6 +85,100 @@ local function test_cmp(done)
   }, done)
 end
 
+-- ------------------------------------------------- signature help float ----
+-- The float itself, not the LSP response -- cpp.lua already covers the wire
+-- protocol. lsp_signature draws a real floating window, so this is pty-only.
+--
+-- Checks the CLion behaviour specifically: it must appear from typing "(" with
+-- no key pressed to summon it.
+local function test_signature(done)
+  local path = root .. "/scratch/sigfloat.cpp"
+  vim.fn.writefile({
+    "#include <string>",
+    "",
+    "int main() {",
+    "    return 0;",
+    "}",
+  }, path)
+  vim.cmd "silent! only"
+  vim.cmd("edit! " .. vim.fn.fnameescape(path))
+  local client = t.wait_lsp("clangd", 25000)
+  t.check("clangd attaches for the signature float", client ~= nil)
+
+  --- Any floating window other than the current one, plus its rendered text.
+  local function float_text()
+    local cur = vim.api.nvim_get_current_win()
+    for _, w in ipairs(vim.api.nvim_list_wins()) do
+      if w ~= cur and vim.api.nvim_win_get_config(w).relative ~= "" then
+        return rendered(vim.api.nvim_win_get_buf(w))
+      end
+    end
+  end
+
+  t.chain({
+    {
+      6000,
+      function()
+        vim.api.nvim_win_set_cursor(0, { 3, 12 })
+        vim.api.nvim_input "o"
+      end,
+    },
+    {
+      1500,
+      function()
+        -- Typing the "(" is the trigger. Nothing is pressed to summon the float.
+        vim.api.nvim_input "std::string s("
+      end,
+    },
+    {
+      5000,
+      function()
+        local text = float_text()
+        t.check("signature float opens by itself on (", text ~= nil, text and text:gsub("\n", " | ") or "no float")
+        t.check(
+          "float shows a std::string constructor",
+          text ~= nil and text:match "basic_string" ~= nil,
+          text and text:gsub("\n", " | ") or "no float"
+        )
+        vim.g.smoke_sig_first = (text or ""):match "[^\n]*"
+
+        -- Cycling is checked by calling the plugin, NOT by sending the key.
+        -- nvim_input cannot deliver every keycode, and asserting on delivery
+        -- here would make this probe fail whenever the key is rebound. That the
+        -- key is bound at all is asserted separately below.
+        require("lsp_signature").signature { trigger = "NextSignature" }
+      end,
+    },
+    {
+      3000,
+      function()
+        local first = ((float_text() or ""):match "[^\n]*")
+        t.check(
+          "cycling moves to a different overload",
+          first ~= nil and first ~= vim.g.smoke_sig_first,
+          string.format("before=%s after=%s", tostring(vim.g.smoke_sig_first), tostring(first))
+        )
+
+        -- The insert-mode cycle key must exist and point at lsp_signature.
+        -- Read it from the plugin config so rebinding the key does not require
+        -- editing this probe.
+        local key = _LSP_SIG_CFG and _LSP_SIG_CFG.select_signature_key
+        t.check("a cycle key is configured", key ~= nil, tostring(key))
+        if key then
+          local m = vim.fn.maparg(key, "i", false, true)
+          t.check(
+            "cycle key is bound in insert mode",
+            m and next(m) ~= nil and (m.desc or ""):match "select signature" ~= nil,
+            string.format("%s -> %s", key, tostring(m and m.desc))
+          )
+        end
+        vim.api.nvim_input "<Esc>"
+      end,
+    },
+    { 1500, function() end },
+  }, done)
+end
+
 -- ------------------------------------------------------------- file tree ---
 local function test_tree(done)
   vim.cmd "silent! only"
@@ -263,10 +357,12 @@ end
 vim.defer_fn(function()
   t.check("real UI attached", #vim.api.nvim_list_uis() > 0, "prerequisite for this probe")
   test_cmp(function()
-    test_tree(function()
-      test_diag_picker(function()
-        test_lazygit(function()
-          t.finish()
+    test_signature(function()
+      test_tree(function()
+        test_diag_picker(function()
+          test_lazygit(function()
+            t.finish()
+          end)
         end)
       end)
     end)

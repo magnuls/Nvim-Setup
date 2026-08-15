@@ -127,6 +127,37 @@ vim.defer_fn(function()
     t.check("ruff flags the unused import", t.count_matching(d, "imported but unused") > 0, messages(d))
   end)
 
+  -- ------------------------------------------------------------ inlay hints ----
+  -- Python gets NONE, and that is a property of the server, not a bug here.
+  -- Open-source pyright does not implement textDocument/inlayHint -- inlay
+  -- hints are a Pylance / basedpyright feature. configs/inlayhints.lua guards
+  -- on supports_method, so it correctly skips this buffer.
+  --
+  -- Asserted rather than skipped so this becomes a tripwire: if pyright ever
+  -- ships inlay hints, this fails and the config can start enabling them.
+  t.guard("py-inlay-hints", function()
+    local buf = open "py/app.py"
+    local client = t.wait_lsp("pyright", 20000)
+    vim.wait(5000)
+    if not client then
+      t.check("pyright attached for the inlay hint check", false)
+      return
+    end
+
+    t.check(
+      "pyright still advertises no inlayHintProvider",
+      not client:supports_method "textDocument/inlayHint",
+      "basedpyright is the drop-in fork that does implement it"
+    )
+    t.check(
+      "inlay hints correctly left off for python",
+      not vim.lsp.inlay_hint.is_enabled { bufnr = buf },
+      "supports_method guard in configs/inlayhints.lua"
+    )
+    -- Signature help is a different capability and pyright does have it.
+    t.check("pyright advertises signatureHelpProvider", client.server_capabilities.signatureHelpProvider ~= nil)
+  end)
+
   -- ------------------------------------------------------------ dap-python ----
   t.guard("py-dap", function()
     open "py/app.py"

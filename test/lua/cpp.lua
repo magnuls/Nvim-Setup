@@ -200,6 +200,116 @@ vim.defer_fn(function()
     vim.cmd "edit!"
   end)
 
+  -- ----------------------------------------- signature help and overloads ----
+  -- Regression guard. configs/lspconfig.lua used to carry
+  --     client.server_capabilities.signatureHelpProvider = false
+  -- which silently removed the parameter list for every server -- no overloads
+  -- on std:: constructors, nothing inside foo(|). Pure LSP requests, so this
+  -- runs headless; the float itself is checked in ui.lua.
+  t.guard("signature-help", function()
+    local path = root .. "/scratch/sigtest.cpp"
+    vim.fn.writefile({
+      "#include <string>",
+      "",
+      "int add(int lhs, int rhs) { return lhs + rhs; }",
+      "",
+      "int main() {",
+      '    std::string s("hi");',
+      "    int r = add(1, 2);",
+      "    return r + static_cast<int>(s.size());",
+      "}",
+    }, path)
+    vim.cmd("edit! " .. vim.fn.fnameescape(path))
+    local buf = vim.api.nvim_get_current_buf()
+    local client = t.wait_lsp "clangd"
+    t.check("clangd attaches to sigtest.cpp", client ~= nil)
+    if not client then
+      return
+    end
+
+    t.check(
+      "clangd advertises signatureHelpProvider",
+      client.server_capabilities.signatureHelpProvider ~= nil,
+      "lspconfig.lua must not disable it"
+    )
+
+    vim.wait(4000)
+    local td = vim.lsp.util.make_text_document_params(buf)
+    local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+
+    --- Cursor position just past the "(" of the first line containing `needle`.
+    --- Computed rather than hardcoded so re-indenting the fixture cannot break
+    --- the probe into a silent pass.
+    local function sigs(needle)
+      local lnum, col
+      for i, l in ipairs(lines) do
+        local c = l:find(needle, 1, true)
+        if c then
+          lnum, col = i - 1, c - 1 + #needle
+          break
+        end
+      end
+      if not lnum then
+        return {}, "needle not found: " .. needle
+      end
+      local res = vim.lsp.buf_request_sync(buf, "textDocument/signatureHelp", {
+        textDocument = td,
+        position = { line = lnum, character = col },
+      }, 8000)
+      for _, r in pairs(res or {}) do
+        if r.result and r.result.signatures then
+          return r.result.signatures
+        end
+      end
+      return {}
+    end
+
+    -- Constructor overloads. libc++ gives 26 here; assert plural rather than an
+    -- exact count, which moves with the standard library version.
+    local ctor = sigs "string s("
+    t.check("std::string( offers multiple constructor overloads", #ctor > 1, #ctor .. " signatures")
+
+    -- A plain function: one signature, and clangd suffixes the return type.
+    -- Needle is "= add(", not "add(": the latter matches the DEFINITION on line
+    -- 3 first, and clangd returns nothing inside a declaration's parameter list.
+    local fn = sigs "= add("
+    local label = fn[1] and fn[1].label or ""
+    t.check("add( returns a signature", #fn > 0, label)
+    t.check("clangd labels carry the return type as -> T", label:match "%->%s*int" ~= nil, label)
+  end)
+
+  -- ------------------------------------------------------------ inlay hints ----
+  -- configs/inlayhints.lua enables these on LspAttach. clangd needs no
+  -- server-side setting for ParameterNames/DeducedTypes; pyright does, and that
+  -- is covered in python.lua.
+  t.guard("inlay-hints", function()
+    local buf = vim.api.nvim_get_current_buf() -- still sigtest.cpp
+    t.check("inlay hints enabled on attach", vim.lsp.inlay_hint.is_enabled { bufnr = buf })
+
+    local hints = t.wait_for(function()
+      local h = vim.lsp.inlay_hint.get { bufnr = buf }
+      return #h > 0 and h or nil
+    end, 10000)
+
+    local labels_got = {}
+    for _, h in ipairs(hints or {}) do
+      local l = h.inlay_hint.label
+      labels_got[#labels_got + 1] = type(l) == "table" and (l[1] and l[1].value or "?") or tostring(l)
+    end
+    local joined = table.concat(labels_got, " ")
+
+    t.check("clangd emits inlay hints", hints ~= nil and #hints > 0, joined)
+    -- Parameter names at the call site (add(lhs: 1, rhs: 2)) and the deduced
+    -- type on `auto` are the two kinds; the fixture exercises the first.
+    t.check("parameter-name hints present", joined:match "lhs" ~= nil, joined)
+
+    local ih = require "configs.inlayhints"
+    ih.toggle()
+    t.check("toggle turns inlay hints off", not vim.lsp.inlay_hint.is_enabled { bufnr = buf })
+    ih.toggle()
+    t.check("toggle turns them back on", vim.lsp.inlay_hint.is_enabled { bufnr = buf })
+  end)
+
   t.guard("cmake-diagnostics", function()
     local buf = open "scratch/CMakeLists.txt"
     t.wait_lsp "neocmake"

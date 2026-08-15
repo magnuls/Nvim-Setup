@@ -42,6 +42,7 @@ vim.defer_fn(function()
       ["<leader>B"] = "Debug: Set Conditional Breakpoint",
       ["<leader>dpr"] = "Debug: Python test method",
       ["\\"] = "nvimtree reveal / close",
+      ["<leader>ih"] = "lsp: toggle inlay hints",
     }
     for lhs, want in pairs(expect_desc) do
       local _, desc = rhs_of(lhs)
