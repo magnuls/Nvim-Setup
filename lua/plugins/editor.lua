@@ -47,6 +47,22 @@ return {
         git_ignored = true,
       })
 
+      -- nvim-tree ships diagnostics off. Note these come from vim.diagnostic,
+      -- which only has data for LOADED buffers -- a broken file you have not
+      -- opened still shows nothing. Marks land in the tree's signcolumn, so
+      -- they do not collide with the git glyphs (git_placement = "before").
+      opts.diagnostics = vim.tbl_deep_extend("force", opts.diagnostics or {}, {
+        enable = true,
+        -- Roll a child's worst diagnostic up onto a COLLAPSED folder; an
+        -- expanded one would just duplicate what is already visible.
+        show_on_dirs = true,
+        show_on_open_dirs = false,
+        -- Errors only, matching configs/diagnostics.lua. Set here too so
+        -- startup is consistent whichever loads first; <leader>dt then moves
+        -- this and vim.diagnostic's floor together at runtime.
+        severity = { min = vim.diagnostic.severity.ERROR },
+      })
+
       -- nvim-tree binds `s` to "Run System", which shells out to `open` and
       -- launches a Mac app. Restore neo-tree's meaning: s = vsplit, S = hsplit.
       opts.on_attach = function(bufnr)
@@ -78,6 +94,58 @@ return {
       opts.mapping["<C-y>"] = cmp.mapping.confirm { select = true }
       return opts
     end,
+  },
+
+  -- Signature help ---------------------------------------------------------
+  -- The parameter list that pops up inside foo(|) -- CLion's "Parameter Info".
+  -- Neovim 0.12 renders this natively and even cycles overloads, but only on
+  -- demand (insert <C-S>) and its cycle key is buffer-local to the float and
+  -- normal-mode only, so you cannot page through std::string's 12 constructors
+  -- without leaving insert mode. This plugin is what makes it automatic.
+  --
+  -- Prerequisite: configs/lspconfig.lua no longer kills signatureHelpProvider.
+  --
+  -- VeryLazy, NOT LspAttach: setup() registers its own LspAttach autocmd, so
+  -- loading it on LspAttach would miss the client that just attached. VeryLazy
+  -- fires on UIEnter, ahead of NvChad's "User FilePost" that loads lspconfig.
+  {
+    "ray-x/lsp_signature.nvim",
+    event = "VeryLazy",
+    opts = {
+      bind = true, -- required for handler_opts.border to apply
+      handler_opts = { border = "rounded" },
+      floating_window = true,
+      -- Above the line, like CLion, so it does not sit on top of the argument
+      -- you are typing.
+      floating_window_above_cur_line = true,
+      -- Reposition the signature float around cmp's menu when both are up.
+      -- Default is already true; set explicitly because this is the setting
+      -- that answers the "signature popup fights the completion menu" problem
+      -- upstream solved by disabling signature help outright. It moves the
+      -- float out of the way -- it does not hide it.
+      check_completion_visible = true,
+      -- The `<- param` virtual text. Off: inlay hints (configs/inlayhints.lua)
+      -- already annotate this line, and two sets of virtual text on one line is
+      -- unreadable.
+      hint_enable = false,
+      hi_parameter = "LspSignatureActiveParameter", -- base46 defines it already
+      max_height = 12,
+      max_width = 100,
+      wrap = true,
+      doc_lines = 3,
+      -- Cycle overloads without leaving insert mode -- the thing native cannot
+      -- do (its <C-s> is buffer-local to the float and normal-mode only).
+      --
+      -- <C-q> costs nothing: its only insert-mode meaning is "insert literal
+      -- character", a duplicate of <C-v>, which still works.
+      --
+      -- Do NOT use <C-\> here. Neovim's input layer treats CTRL-\ as a prefix
+      -- awaiting CTRL-N/G/O, so a lone <C-\> mapping never fires -- verified by
+      -- feeding a raw 0x1C byte through a pty. It registers fine and silently
+      -- does nothing, which is the worst possible failure mode.
+      select_signature_key = "<C-q>",
+      timer_interval = 100,
+    },
   },
 
   -- Window / tmux navigation -----------------------------------------------

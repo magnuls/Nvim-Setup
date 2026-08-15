@@ -32,6 +32,26 @@ end, { desc = "nvimtree reveal / close" })
 -- than require("telescope.builtin"), so telescope stays lazy-loaded on :Telescope.
 map("n", "<leader>fd", "<cmd>Telescope diagnostics<CR>", { desc = "telescope diagnostics" })
 
+-- Errors-only is the default (configs/diagnostics.lua); this flips warnings and
+-- hints back on for a cleanup pass. Note <leader>fd above reads
+-- vim.diagnostic.get() directly, so it lists everything in either mode.
+map("n", "<leader>dt", function()
+  require("configs.diagnostics").toggle()
+end, { desc = "diagnostics: toggle errors-only / all" })
+
+map("n", "<leader>de", vim.diagnostic.open_float, { desc = "diagnostics: open float (full message)" })
+
+-- LSP ---------------------------------------------------------------------------
+-- Signature help needs no keymap here: lsp_signature (plugins/editor.lua) pops
+-- it automatically inside foo(|) and binds <C-q> itself to cycle overloads.
+-- Neovim 0.12's own insert-mode <C-S> still forces the native full list, and K
+-- (hover) is the one that reliably shows return types.
+--
+-- <leader>i* is untouched by NvChad.
+map("n", "<leader>ih", function()
+  require("configs.inlayhints").toggle()
+end, { desc = "lsp: toggle inlay hints" })
+
 -- Git ---------------------------------------------------------------------------
 -- gitsigns (hunks, blame) and Telescope (<leader>cm commits, <leader>gt status)
 -- are NvChad defaults. lazygit adds branches, log graph and rebasing.
