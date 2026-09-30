@@ -10,7 +10,7 @@ local M = {}
 M.base46 = {
   -- Matches Alacritty (themes/tokyo_night.toml) and tmux (tokyo-night-tmux),
   -- so the statusline doesn't clash with the tmux bar right below it.
-  theme = "catppuccin-latte",
+  theme = "chadracula",
 }
 
 return M
