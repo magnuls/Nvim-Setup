@@ -36,6 +36,31 @@ return {
     end,
   },
 
+  -- Folding ----------------------------------------------------------------
+  -- Folds on treesitter boundaries WITHOUT foldmethod=expr. Expr folds are
+  -- recomputed on every reparse, and recomputed folds reset to foldlevel's
+  -- state -- close a fold, press o / type / <Esc>, and it pops back open.
+  -- ufo computes the same treesitter ranges, applies them as manual folds,
+  -- and preserves open/closed state across edits. Options it depends on
+  -- (foldlevel=99, foldcolumn) are in options.lua; zM/zR are remapped to its
+  -- own open/close-all in mappings.lua because the native versions move
+  -- foldlevel, which ufo requires pinned at 99.
+  --
+  -- The treesitter provider uses core vim.treesitter (parser + folds query),
+  -- so nvim-treesitter's main-branch rewrite above does not affect it. The
+  -- indent fallback covers filetypes with no parser, which under expr folding
+  -- simply had no folds.
+  {
+    "kevinhwang91/nvim-ufo",
+    dependencies = "kevinhwang91/promise-async",
+    event = { "BufReadPost", "BufNewFile" },
+    opts = {
+      provider_selector = function()
+        return { "treesitter", "indent" }
+      end,
+    },
+  },
+
   -- File tree --------------------------------------------------------------
   {
     "nvim-tree/nvim-tree.lua",

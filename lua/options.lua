@@ -9,16 +9,18 @@ require "nvchad.options"
 vim.o.relativenumber = true
 
 -- Folding ----------------------------------------------------------------------
--- Neovim defaults to foldmethod=manual, i.e. no folds exist until you make them
--- by hand with zf. Drive them off the treesitter tree instead so functions,
--- classes and blocks fold on their real boundaries rather than on indentation
--- guesses. Parsers are installed and started in plugins/editor.lua; a filetype
--- with no parser just gets no folds, which is harmless.
-vim.o.foldmethod = "expr"
-vim.o.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+-- Fold boundaries come from the treesitter tree, but via nvim-ufo
+-- (plugins/editor.lua), not foldmethod=expr. With expr, every reparse after an
+-- edit rebuilds the folds and rebuilt folds forget their manual open/closed
+-- state -- so a fold you closed with za pops open the moment you leave insert
+-- mode. ufo computes the same treesitter boundaries, feeds them in as manual
+-- folds, and carries their state across edits. foldmethod therefore stays at
+-- Neovim's default, manual; ufo owns it.
 
 -- Open everything on load. Without this a file arrives fully collapsed, which
--- no other editor does. 99 is the idiom for "deeper than any real nesting".
+-- no other editor does. 99 is the idiom for "deeper than any real nesting";
+-- ufo additionally requires it, because it never moves foldlevel and instead
+-- implements zM/zR itself (see mappings.lua).
 vim.o.foldlevel = 99
 vim.o.foldlevelstart = 99
 
@@ -26,6 +28,8 @@ vim.o.foldlevelstart = 99
 -- sets mouse=a, so clicking one toggles that fold.
 vim.o.foldcolumn = "1"
 
--- Empty foldtext (0.10+) keeps the folded line syntax-highlighted instead of
--- replacing it with the plain "+--  12 lines:" filler.
+-- ufo renders folded lines itself (syntax-highlighted, with a fold marker).
+-- Empty foldtext (0.10+) is the matching fallback for any buffer ufo has not
+-- attached to: the folded line stays highlighted instead of being replaced
+-- with the plain "+--  12 lines:" filler.
 vim.o.foldtext = ""

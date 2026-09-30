@@ -52,6 +52,20 @@ map("n", "<leader>ih", function()
   require("configs.inlayhints").toggle()
 end, { desc = "lsp: toggle inlay hints" })
 
+-- Folding ------------------------------------------------------------------------
+-- Folds are managed by nvim-ufo (plugins/editor.lua), which pins foldlevel at
+-- 99. Native zM/zR work by moving foldlevel, so after a native zM every fold
+-- ufo recomputes would slam shut again; these route through ufo's own
+-- close/open-all, which keeps foldlevel where it is. Same keys, same meaning.
+-- za/zc/zo and the rest operate on ufo's manual folds natively and need no map.
+map("n", "zR", function()
+  require("ufo").openAllFolds()
+end, { desc = "folds: open all" })
+
+map("n", "zM", function()
+  require("ufo").closeAllFolds()
+end, { desc = "folds: close all" })
+
 -- Git ---------------------------------------------------------------------------
 -- gitsigns (hunks, blame) and Telescope (<leader>cm commits, <leader>gt status)
 -- are NvChad defaults. lazygit adds branches, log graph and rebasing.
