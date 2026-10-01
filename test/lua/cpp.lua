@@ -181,6 +181,29 @@ vim.defer_fn(function()
     t.check("clangd reports errors in broken C++", errors(d) > 0, messages(d))
   end)
 
+  -- ------------------------------------------- GCC is the toolchain ----
+  -- Regression guard for the Homebrew GCC switch. Two independent pieces:
+  --   1. CC/CXX in ~/.zshrc reached CMake, so compile_commands.json names
+  --      g++-16 rather than /usr/bin/c++ (Apple clang).
+  --   2. clangd resolves bits/stdc++.h on a file with NO compile database,
+  --      and parses GCC's libstdc++ cleanly at C++23. That is the
+  --      -nostdinc++ + -isystem/opt/homebrew/opt/gcc/include/c++/16 block in
+  --      ~/Library/Preferences/clangd/config.yaml. The tempting alternative,
+  --      --query-driver + CompileFlags.Compiler, passes the first check and
+  --      fails the second (unknown type name '__darwin_wint_t'), which is
+  --      exactly why both checks exist.
+  t.guard("clangd-gcc", function()
+    local cc = table.concat(vim.fn.readfile(root .. "/build/compile_commands.json"), "\n")
+    t.check("compile_commands.json uses Homebrew g++", cc:find("/g%+%+%-%d+", 1) ~= nil, cc:sub(1, 200))
+
+    local buf = open "scratch/bits.cpp"
+    t.wait_lsp "clangd"
+    vim.wait(8000)
+    local d = vim.diagnostic.get(buf)
+    t.check("bits/stdc++.h resolves (no compile db)", t.count_matching(d, "file not found") == 0, messages(d))
+    t.check("bits/stdc++.h file is clean", errors(d) == 0, messages(d))
+  end)
+
   -- -------------------------------------------------------------- CMake ----
   t.guard("cmake-lsp", function()
     local buf = open "CMakeLists.txt"

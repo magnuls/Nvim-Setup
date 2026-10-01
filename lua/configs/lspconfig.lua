@@ -17,6 +17,13 @@ vim.lsp.config("clangd", {
   -- Unlisted flags keep their clangd defaults, so --header-insertion=iwyu --
   -- the auto-#include on <C-y> -- is unaffected.
   -- Bare "clangd" resolves to mason's copy; mason prepends its bin to PATH.
+  -- Deliberately NO --query-driver. The toolchain is Homebrew GCC, and the
+  -- obvious way to teach clangd that is to let it query g++-16 for include
+  -- paths. That breaks: GCC reports the SDK's usr/include as a plain -isystem,
+  -- which then shadows clang's own builtin headers, and libstdc++ at -std=c++20
+  -- or later fails to parse (unknown type __darwin_wint_t). Instead, clangd
+  -- keeps its own builtins and SDK and is handed only GCC's libstdc++ dirs via
+  -- CompileFlags.Add in ~/Library/Preferences/clangd/config.yaml.
   cmd = {
     "clangd",
     "--background-index",

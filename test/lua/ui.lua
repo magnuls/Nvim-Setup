@@ -115,6 +115,24 @@ local function test_signature(done)
     end
   end
 
+  --- The line of the float that is the signature itself: the first line
+  --- mentioning basic_string, else the first line that is not a code fence.
+  local function sig_line(text)
+    if not text then
+      return nil
+    end
+    local fallback
+    for line in text:gmatch "[^\n]+" do
+      if line:match "basic_string" then
+        return line
+      end
+      if not fallback and not line:match "^```" then
+        fallback = line
+      end
+    end
+    return fallback
+  end
+
   t.chain({
     {
       6000,
@@ -140,7 +158,11 @@ local function test_signature(done)
           text ~= nil and text:match "basic_string" ~= nil,
           text and text:gsub("\n", " | ") or "no float"
         )
-        vim.g.smoke_sig_first = (text or ""):match "[^\n]*"
+        -- Compare the signature line, not line 1: libstdc++'s constructors
+        -- carry doxygen docs, so lsp_signature wraps the float in a ```cpp
+        -- fence and line 1 is the same fence for every overload. libc++ has
+        -- no docs there, which is why a plain first-line compare used to pass.
+        vim.g.smoke_sig_first = sig_line(text)
 
         -- Cycling is checked by calling the plugin, NOT by sending the key.
         -- nvim_input cannot deliver every keycode, and asserting on delivery
@@ -152,7 +174,7 @@ local function test_signature(done)
     {
       3000,
       function()
-        local first = ((float_text() or ""):match "[^\n]*")
+        local first = sig_line(float_text())
         t.check(
           "cycling moves to a different overload",
           first ~= nil and first ~= vim.g.smoke_sig_first,

@@ -165,6 +165,21 @@ int main() {
 }
 EOF
 
+# No compile database here on purpose: this takes clangd's fallback path, which
+# only resolves bits/stdc++.h when CompileFlags.Compiler + --query-driver point
+# at Homebrew GCC. std::println also needs GCC's libstdc++ to be in play.
+cat > scratch/bits.cpp <<'EOF'
+#include <bits/stdc++.h>
+
+int main() {
+    std::map<int, std::string> m{{1, "one"}};
+    std::vector<int> v{3, 1, 2};
+    std::ranges::sort(v);
+    std::println("{} {}", m[1], v.front());
+    return 0;
+}
+EOF
+
 cat > scratch/CMakeLists.txt <<'EOF'
 cmake_minimum_required(VERSION 3.20)
 project(broken CXX
